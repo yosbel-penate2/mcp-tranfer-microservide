@@ -42,5 +42,18 @@ services:
       MCP_TRANSPORT: sse
       MCP_PORT: 3000
 
+  livekit-agent:
+    build:
+      context: .
+      dockerfile: livekit_agent/Dockerfile
+    depends_on:
+      - api
+    environment:
+      API_BASE_URL: http://api:8000
+      AUTH_TOKEN: supersecrettoken
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+
 volumes:
   pgdata:
