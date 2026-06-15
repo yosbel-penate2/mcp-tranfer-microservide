@@ -211,6 +211,48 @@ GET  http://localhost:3000/sse       → Conexión SSE
 POST http://localhost:3000/messages/ → Mensajes del cliente
 ```
 
+## Datos de Demo (Seed)
+
+El script `scripts/seed.py` popula la base de datos con datos ficticios para desarrollo y demos.
+
+### Uso Local
+
+```bash
+# Con SQLite (desarrollo rápido)
+export DATABASE_URL=sqlite:///./banking.db  # Linux/macOS
+set DATABASE_URL=sqlite:///./banking.db     # Windows
+python scripts/seed.py
+
+# Con PostgreSQL local
+export DATABASE_URL=postgresql://user:password@localhost:5432/banking
+python scripts/seed.py
+```
+
+### Uso con Docker Compose
+
+```bash
+# Iniciar servicios
+docker-compose up -d
+
+# Ejecutar seed (desde el host, apuntando al puerto expuesto)
+DATABASE_URL=postgresql://user:password@localhost:5432/banking python scripts/seed.py
+
+# O desde dentro del contenedor de la API
+docker-compose exec api python scripts/seed.py
+```
+
+### Datos Creados
+
+| Cliente | Email | Cuentas (número - saldo) |
+|---------|-------|---------------------------|
+| Juan Pérez | juan.perez@example.com | 0010000001 - $5,000.00 / 0010000002 - $2,500.50 |
+| María García | maria.garcia@example.com | 0020000001 - $10,000.00 |
+| Carlos López | carlos.lopez@example.com | 0030000001 - $1,500.75 |
+
+- **Idempotente**: si ya existen datos, no duplica
+- **Compatible** con SQLite (dev) y PostgreSQL (Docker/producción)
+- **Variable** `DATABASE_URL` configurable (default apunta a Docker Compose)
+
 ## Ejecutar Pruebas
 
 ```bash
