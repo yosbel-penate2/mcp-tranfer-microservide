@@ -5,7 +5,7 @@ and service wiring for dependency injection via FastAPI's Depends().
 """
 
 import os
-from typing import AsyncGenerator
+from typing import Generator
 
 from fastapi import Depends
 from sqlalchemy import create_engine
@@ -30,7 +30,7 @@ Base.metadata.create_all(engine)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
-def get_session() -> AsyncGenerator[Session, None]:
+def get_session() -> Generator[Session, None, None]:
     """FastAPI dependency that yields a DB session.
 
     Session is automatically closed when the request completes.

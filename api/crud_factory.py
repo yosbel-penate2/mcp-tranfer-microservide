@@ -48,9 +48,9 @@ def create_crud_router(
     Returns:
         Configured APIRouter instance.
     """
-    router = APIRouter(prefix=prefix, tags=tags, dependencies=[Depends(auth_dep)])
+    router = APIRouter(prefix=prefix, tags=list(tags), dependencies=[Depends(auth_dep)])
 
-    @router.get("/", response_model=List[schema_out])
+    @router.get("/", response_model=List[schema_out])  # type: ignore[valid-type]
     def list_all(
         skip: int = Query(0, ge=0),
         limit: int = Query(100, ge=1, le=500),
@@ -74,21 +74,21 @@ def create_crud_router(
         return obj
 
     @router.post("/", response_model=schema_out, status_code=status.HTTP_201_CREATED)
-    def create(
-        data: schema_in,
+    def create(  # type: ignore[valid-type]
+        data: schema_in,  # type: ignore[valid-type]
         session: Session = Depends(get_session_dep),
     ):
         """Create a new entity."""
-        obj = model(**data.model_dump())
+        obj = model(**data.model_dump())  # type: ignore[attr-defined]
         session.add(obj)
         session.commit()
         session.refresh(obj)
         return obj
 
     @router.put("/{item_id}", response_model=schema_out)
-    def update(
+    def update(  # type: ignore[valid-type]
         item_id: int,
-        data: schema_in,
+        data: schema_in,  # type: ignore[valid-type]
         session: Session = Depends(get_session_dep),
     ):
         """Fully update an existing entity."""
@@ -98,7 +98,7 @@ def create_crud_router(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"{model.__name__} not found",
             )
-        for key, value in data.model_dump().items():
+        for key, value in data.model_dump().items():  # type: ignore[attr-defined]
             setattr(obj, key, value)
         session.commit()
         session.refresh(obj)
