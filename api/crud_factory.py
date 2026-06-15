@@ -4,7 +4,7 @@ Generates standard REST endpoints (GET list, GET by id, POST, PUT, DELETE)
 for any SQLAlchemy model with Pydantic schemas, minimizing boilerplate.
 """
 
-from typing import Any, Callable, List, Type
+from typing import Any, Callable, List, Sequence, Type
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -19,7 +19,7 @@ def create_crud_router(
     schema_in: Type[BaseModel],
     schema_out: Type[BaseModel],
     prefix: str,
-    tags: List[str],
+    tags: Sequence[str],
     identifier: str = "id",
     get_session_dep: Callable = get_session,
     auth_dep: Callable = get_current_user,
