@@ -1,3 +1,9 @@
+"""SQLAlchemy ORM models for the banking domain.
+
+Defines the database schema and relationships for
+Cliente (client), Cuenta (account), and Transaccion (transaction).
+"""
+
 from decimal import Decimal
 from datetime import datetime
 from sqlalchemy import (
@@ -8,10 +14,19 @@ from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
+    """Declarative base for all ORM models."""
     pass
 
 
 class Cliente(Base):
+    """Bank client (aggregate root).
+
+    Attributes:
+        id: Auto-generated primary key.
+        nombre: Full name of the client.
+        email: Unique email address (used as login identifier).
+        cuentas: One-to-many relationship to Cuenta.
+    """
     __tablename__ = "clientes"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -22,6 +37,14 @@ class Cliente(Base):
 
 
 class Cuenta(Base):
+    """Bank account belonging to a client.
+
+    Attributes:
+        id: Auto-generated primary key.
+        numero: Unique account number (business identifier).
+        saldo: Current balance (Numeric(10,2) for precision).
+        cliente_id: Foreign key to the owning Cliente.
+    """
     __tablename__ = "cuentas"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -40,6 +63,14 @@ class Cuenta(Base):
     )
 
     def puede_retirar(self, monto: Decimal) -> bool:
+        """Check if account has sufficient funds.
+
+        Args:
+            monto: Amount to withdraw.
+
+        Returns:
+            True if current balance >= monto, False otherwise.
+        """
         return self.saldo >= monto
 
     def __repr__(self) -> str:
@@ -47,6 +78,15 @@ class Cuenta(Base):
 
 
 class Transaccion(Base):
+    """Record of a money transfer between two accounts.
+
+    Attributes:
+        id: Auto-generated primary key.
+        monto: Transfer amount (Numeric(10,2)).
+        fecha: Timestamp of the transaction (server default now()).
+        cuenta_origen_id: FK to the source Cuenta.
+        cuenta_destino_id: FK to the destination Cuenta.
+    """
     __tablename__ = "transacciones"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

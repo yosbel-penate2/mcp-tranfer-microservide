@@ -1,3 +1,9 @@
+"""SQLAlchemy implementations of repository interfaces (adapters).
+
+Concrete persistence adapters that fulfill the contracts
+defined in core/repositories.py using the SQLAlchemy ORM.
+"""
+
 from decimal import Decimal
 from typing import List, Optional
 
@@ -12,6 +18,8 @@ from core.repositories import (
 
 
 class SQLAlchemyClienteRepository(ClienteRepository):
+    """SQLAlchemy adapter for Cliente persistence."""
+
     def __init__(self, session: Session):
         self.session = session
 
@@ -34,6 +42,8 @@ class SQLAlchemyClienteRepository(ClienteRepository):
 
 
 class SQLAlchemyCuentaRepository(CuentaRepository):
+    """SQLAlchemy adapter for Cuenta persistence."""
+
     def __init__(self, session: Session):
         self.session = session
 
@@ -58,6 +68,8 @@ class SQLAlchemyCuentaRepository(CuentaRepository):
 
 
 class SQLAlchemyTransaccionRepository(TransaccionRepository):
+    """SQLAlchemy adapter for Transaccion persistence."""
+
     def __init__(self, session: Session):
         self.session = session
 
