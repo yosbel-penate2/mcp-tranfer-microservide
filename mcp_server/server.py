@@ -1,3 +1,13 @@
+"""MCP (Model Context Protocol) server for banking operations.
+
+Supports two transport modes:
+  - SSE (default): Uses HTTP Server-Sent Events on port 3000.
+    Suitable for remote connections (e.g., ChatGPT Actions).
+  - stdio: Standard input/output for local Claude Desktop integration.
+
+Transport mode is selected via the MCP_TRANSPORT environment variable.
+"""
+
 import logging
 import os
 from typing import Any, Dict, List, Optional, Sequence
@@ -23,6 +33,7 @@ TRANSPORT = os.environ.get("MCP_TRANSPORT", "sse").lower()
 
 @app.list_tools()
 async def list_tools() -> List[Tool]:
+    """MCP handler: returns available tools dynamically from the OpenAPI spec."""
     return await generate_tools()
 
 
@@ -31,11 +42,19 @@ async def call_tool(
     name: str,
     arguments: Dict[str, Any],
 ) -> Sequence[TextContent]:
+    """MCP handler: executes a tool call against the REST API."""
     result = await handle_tool_call(name, arguments)
     return [TextContent(type="text", text=r["text"]) for r in result]
 
 
 async def run_sse():
+    """Run the MCP server with SSE (Server-Sent Events) transport.
+
+    Listens on port 3000 (configurable via MCP_PORT env var).
+    Exposes two HTTP routes:
+      - GET  /sse        — SSE endpoint for client connection
+      - POST /messages/  — Message endpoint for client responses
+    """
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
     from starlette.routing import Route
@@ -75,6 +94,11 @@ async def run_sse():
 
 
 async def run_stdio():
+    """Run the MCP server with stdio transport.
+
+    Used for local Claude Desktop integration via
+    claude_desktop_config.json.
+    """
     from mcp.server.stdio import stdio_server
 
     async with stdio_server() as (read_stream, write_stream):
@@ -90,6 +114,7 @@ async def run_stdio():
 
 
 async def main():
+    """Entry point — dispatches to SSE or stdio based on MCP_TRANSPORT."""
     if TRANSPORT == "sse":
         await run_sse()
     else:

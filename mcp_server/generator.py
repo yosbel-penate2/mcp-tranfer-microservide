@@ -1,3 +1,10 @@
+"""Dynamic MCP Tool generator from OpenAPI specification.
+
+Fetches the REST API's OpenAPI spec at runtime and
+creates corresponding MCP Tools for each operation.
+A generic handler dispatches tool calls to the REST API.
+"""
+
 import json
 import logging
 from typing import Any, Callable, Dict, List, Optional
@@ -12,6 +19,17 @@ logger = logging.getLogger(__name__)
 def _extract_input_schema(
     path_def: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """Build a JSON Schema input schema from an OpenAPI path definition.
+
+    Handles path parameters, query parameters, and request body
+    (application/json). Body parameters are nested under a 'body' key.
+
+    Args:
+        path_def: The OpenAPI operation definition dict.
+
+    Returns:
+        JSON Schema dict suitable for MCP Tool inputSchema.
+    """
     parameters = path_def.get("parameters", [])
     request_body = path_def.get("requestBody", {})
 
@@ -56,6 +74,16 @@ def _build_tool_from_operation(
     method: str,
     operation: Dict[str, Any],
 ) -> Optional[Tool]:
+    """Convert an OpenAPI operation into an MCP Tool definition.
+
+    Args:
+        path: URL path pattern (e.g. '/clientes/{id}').
+        method: HTTP method (get, post, etc.).
+        operation: OpenAPI operation dict.
+
+    Returns:
+        MCP Tool instance, or None if no operationId.
+    """
     operation_id = operation.get("operationId", "")
     if not operation_id:
         return None
@@ -71,6 +99,11 @@ def _build_tool_from_operation(
 
 
 async def generate_tools() -> List[Tool]:
+    """Fetch the OpenAPI spec and generate all MCP Tools.
+
+    Returns:
+        List of MCP Tool definitions. Empty list if spec unavailable.
+    """
     try:
         spec = await fetch_openapi_spec()
     except Exception as e:
@@ -96,6 +129,19 @@ async def handle_tool_call(
     name: str,
     arguments: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
+    """Execute an MCP tool call by dispatching to the REST API.
+
+    Looks up the operation by name in the OpenAPI spec,
+    separates path/query params from the request body,
+    and calls the REST API via the api_client.
+
+    Args:
+        name: MCP Tool name (matching operationId).
+        arguments: Tool arguments dict.
+
+    Returns:
+        List with a single TextContent dict containing the API response.
+    """
     try:
         spec = await fetch_openapi_spec()
     except Exception as e:
