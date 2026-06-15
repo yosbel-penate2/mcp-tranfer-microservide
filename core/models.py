@@ -6,15 +6,13 @@ Cliente (client), Cuenta (account), and Transaccion (transaction).
 
 from decimal import Decimal
 from datetime import datetime
-from sqlalchemy import (
-    String, Numeric, DateTime, ForeignKey,
-    func
-)
+from sqlalchemy import String, Numeric, DateTime, ForeignKey, func
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
+
     pass
 
 
@@ -27,13 +25,16 @@ class Cliente(Base):
         email: Unique email address (used as login identifier).
         cuentas: One-to-many relationship to Cuenta.
     """
+
     __tablename__ = "clientes"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     nombre: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
-    cuentas = relationship("Cuenta", back_populates="cliente", cascade="all, delete-orphan")
+    cuentas = relationship(
+        "Cuenta", back_populates="cliente", cascade="all, delete-orphan"
+    )
 
 
 class Cuenta(Base):
@@ -45,21 +46,28 @@ class Cuenta(Base):
         saldo: Current balance (Numeric(10,2) for precision).
         cliente_id: Foreign key to the owning Cliente.
     """
+
     __tablename__ = "cuentas"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     numero: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    saldo: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    saldo: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=Decimal("0.00"), nullable=False
+    )
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"), nullable=False)
 
     cliente = relationship("Cliente", back_populates="cuentas")
     transacciones_origen = relationship(
-        "Transaccion", foreign_keys="Transaccion.cuenta_origen_id",
-        back_populates="cuenta_origen", cascade="all, delete-orphan"
+        "Transaccion",
+        foreign_keys="Transaccion.cuenta_origen_id",
+        back_populates="cuenta_origen",
+        cascade="all, delete-orphan",
     )
     transacciones_destino = relationship(
-        "Transaccion", foreign_keys="Transaccion.cuenta_destino_id",
-        back_populates="cuenta_destino", cascade="all, delete-orphan"
+        "Transaccion",
+        foreign_keys="Transaccion.cuenta_destino_id",
+        back_populates="cuenta_destino",
+        cascade="all, delete-orphan",
     )
 
     def puede_retirar(self, monto: Decimal) -> bool:
@@ -87,6 +95,7 @@ class Transaccion(Base):
         cuenta_origen_id: FK to the source Cuenta.
         cuenta_destino_id: FK to the destination Cuenta.
     """
+
     __tablename__ = "transacciones"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -102,10 +111,10 @@ class Transaccion(Base):
     )
 
     cuenta_origen = relationship(
-        "Cuenta", foreign_keys=[cuenta_origen_id],
-        back_populates="transacciones_origen"
+        "Cuenta", foreign_keys=[cuenta_origen_id], back_populates="transacciones_origen"
     )
     cuenta_destino = relationship(
-        "Cuenta", foreign_keys=[cuenta_destino_id],
-        back_populates="transacciones_destino"
+        "Cuenta",
+        foreign_keys=[cuenta_destino_id],
+        back_populates="transacciones_destino",
     )

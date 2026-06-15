@@ -13,11 +13,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.crud_factory import create_crud_router
 from api.dependencies import get_transferencia_service
 from api.schemas import (
-    ClienteCreate, ClienteOut,
-    CuentaCreate, CuentaOut,
-    TransaccionCreate, TransaccionOut,
-    TransferenciaRequest, TransferenciaResponse,
-    Token, LoginRequest,
+    ClienteCreate,
+    ClienteOut,
+    CuentaCreate,
+    CuentaOut,
+    TransaccionCreate,
+    TransaccionOut,
+    TransferenciaRequest,
+    TransferenciaResponse,
+    Token,
+    LoginRequest,
 )
 from api.security import (
     create_access_token,
@@ -123,4 +128,5 @@ def transferir(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

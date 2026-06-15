@@ -21,7 +21,9 @@ from core.services import TransferenciaService
 from core.unit_of_work import UnitOfWork
 
 # Database URL from environment (defaults to Docker Compose PostgreSQL)
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://user:password@db:5432/banking")
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL", "postgresql://user:password@db:5432/banking"
+)
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 Base.metadata.create_all(engine)

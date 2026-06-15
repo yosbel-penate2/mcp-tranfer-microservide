@@ -46,7 +46,9 @@ class TestCuentaRepository:
     """Integration tests for SQLAlchemyCuentaRepository."""
 
     def test_agregar_y_obtener_por_numero(self, cuenta_repo, sample_cliente):
-        cuenta = Cuenta(numero="X001", saldo=Decimal("100.00"), cliente_id=sample_cliente.id)
+        cuenta = Cuenta(
+            numero="X001", saldo=Decimal("100.00"), cliente_id=sample_cliente.id
+        )
         cuenta_repo.agregar(cuenta)
         fetched = cuenta_repo.obtener_por_numero("X001")
         assert fetched is not None
@@ -61,10 +63,14 @@ class TestCuentaRepository:
         assert len(cuentas) == 2
 
     def test_numero_unique(self, session, cuenta_repo, sample_cliente):
-        cuenta_repo.agregar(Cuenta(numero="UNIQ", saldo=Decimal("0"), cliente_id=sample_cliente.id))
+        cuenta_repo.agregar(
+            Cuenta(numero="UNIQ", saldo=Decimal("0"), cliente_id=sample_cliente.id)
+        )
         session.flush()
         with pytest.raises(sa_exc.IntegrityError):
-            cuenta_repo.agregar(Cuenta(numero="UNIQ", saldo=Decimal("0"), cliente_id=sample_cliente.id))
+            cuenta_repo.agregar(
+                Cuenta(numero="UNIQ", saldo=Decimal("0"), cliente_id=sample_cliente.id)
+            )
             session.flush()
 
 

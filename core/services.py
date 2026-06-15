@@ -63,9 +63,7 @@ class TransferenciaService:
                 raise CuentaNoEncontrada(num_destino)
 
             if not origen.puede_retirar(monto):
-                raise SaldoInsuficiente(
-                    origen.numero, str(origen.saldo), str(monto)
-                )
+                raise SaldoInsuficiente(origen.numero, str(origen.saldo), str(monto))
 
             origen.saldo -= monto
             destino.saldo += monto

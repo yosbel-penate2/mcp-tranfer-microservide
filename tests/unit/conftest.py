@@ -31,7 +31,7 @@ class MockClienteRepository(ClienteRepository):
         return self.clientes.get(cliente_id)
 
     def listar(self, skip: int = 0, limit: int = 100) -> List[Cliente]:
-        return list(self.clientes.values())[skip:skip + limit]
+        return list(self.clientes.values())[skip : skip + limit]
 
     def eliminar(self, cliente_id: int) -> None:
         self.clientes.pop(cliente_id, None)
@@ -70,12 +70,15 @@ class MockTransaccionRepository(TransaccionRepository):
         self.transacciones.append(transaccion)
         return transaccion
 
-    def historial_cuenta(self, cuenta_id: int, skip: int = 0, limit: int = 100) -> List[Transaccion]:
+    def historial_cuenta(
+        self, cuenta_id: int, skip: int = 0, limit: int = 100
+    ) -> List[Transaccion]:
         relevant = [
-            t for t in self.transacciones
+            t
+            for t in self.transacciones
             if t.cuenta_origen_id == cuenta_id or t.cuenta_destino_id == cuenta_id
         ]
-        return relevant[skip:skip + limit]
+        return relevant[skip : skip + limit]
 
 
 class MockUnitOfWork(UnitOfWork):

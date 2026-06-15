@@ -116,7 +116,9 @@ class TransaccionRepository(ABC):
         ...
 
     @abstractmethod
-    def historial_cuenta(self, cuenta_id: int, skip: int = 0, limit: int = 100) -> List[Transaccion]:
+    def historial_cuenta(
+        self, cuenta_id: int, skip: int = 0, limit: int = 100
+    ) -> List[Transaccion]:
         """Get all transactions involving a specific account.
 
         Returns both outgoing and incoming transactions

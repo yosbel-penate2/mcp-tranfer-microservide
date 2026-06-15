@@ -52,18 +52,10 @@ class SQLAlchemyCuentaRepository(CuentaRepository):
         return cuenta
 
     def obtener_por_numero(self, numero: str) -> Optional[Cuenta]:
-        return (
-            self.session.query(Cuenta)
-            .filter(Cuenta.numero == numero)
-            .first()
-        )
+        return self.session.query(Cuenta).filter(Cuenta.numero == numero).first()
 
     def listar_por_cliente(self, cliente_id: int) -> List[Cuenta]:
-        return (
-            self.session.query(Cuenta)
-            .filter(Cuenta.cliente_id == cliente_id)
-            .all()
-        )
+        return self.session.query(Cuenta).filter(Cuenta.cliente_id == cliente_id).all()
 
 
 class SQLAlchemyTransaccionRepository(TransaccionRepository):

@@ -39,7 +39,10 @@ def _extract_input_schema(
     for param in parameters:
         if param.get("in") == "path":
             name = param["name"]
-            properties[name] = {"type": "string", "description": param.get("description", "")}
+            properties[name] = {
+                "type": "string",
+                "description": param.get("description", ""),
+            }
             if param.get("required"):
                 required.append(name)
         elif param.get("in") == "query":
@@ -164,8 +167,15 @@ async def handle_tool_call(
                         params[key] = value
 
                 try:
-                    result = await call_api(method.upper(), path, params=params, body=body)
-                    return [{"type": "text", "text": json.dumps(result, indent=2, default=str)}]
+                    result = await call_api(
+                        method.upper(), path, params=params, body=body
+                    )
+                    return [
+                        {
+                            "type": "text",
+                            "text": json.dumps(result, indent=2, default=str),
+                        }
+                    ]
                 except Exception as e:
                     return [{"type": "text", "text": f"Error calling API: {e}"}]
 

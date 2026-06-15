@@ -66,8 +66,12 @@ def sample_cliente(cliente_repo):
 @pytest.fixture
 def sample_cuentas(sample_cliente, cuenta_repo):
     """Fixture: persists and returns two sample Cuentas for a client."""
-    origen = Cuenta(numero="C001", saldo=Decimal("1000.00"), cliente_id=sample_cliente.id)
-    destino = Cuenta(numero="C002", saldo=Decimal("500.00"), cliente_id=sample_cliente.id)
+    origen = Cuenta(
+        numero="C001", saldo=Decimal("1000.00"), cliente_id=sample_cliente.id
+    )
+    destino = Cuenta(
+        numero="C002", saldo=Decimal("500.00"), cliente_id=sample_cliente.id
+    )
     cuenta_repo.agregar(origen)
     cuenta_repo.agregar(destino)
     return origen, destino
