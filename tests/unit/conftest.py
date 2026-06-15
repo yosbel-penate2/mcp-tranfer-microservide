@@ -4,13 +4,10 @@ Provides in-memory mock repositories and a mock Unit of Work
 to test the TransferenciaService in isolation without a database.
 """
 
-from decimal import Decimal
-from unittest.mock import MagicMock
 from typing import Optional, List
 
 import pytest
 
-from core.exceptions import CuentaNoEncontrada, SaldoInsuficiente
 from core.models import Cliente, Cuenta, Transaccion
 from core.repositories import ClienteRepository, CuentaRepository, TransaccionRepository
 from core.services import TransferenciaService

@@ -8,7 +8,7 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.models import Base, Cliente, Cuenta
 from core.repos_impl import (

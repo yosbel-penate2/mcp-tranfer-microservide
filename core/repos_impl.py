@@ -4,7 +4,6 @@ Concrete persistence adapters that fulfill the contracts
 defined in core/repositories.py using the SQLAlchemy ORM.
 """
 
-from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy.orm import Session

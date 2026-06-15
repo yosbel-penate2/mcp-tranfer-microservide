@@ -7,7 +7,7 @@ A generic handler dispatches tool calls to the REST API.
 
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from mcp.types import Tool
 

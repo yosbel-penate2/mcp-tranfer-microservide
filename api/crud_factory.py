@@ -4,11 +4,10 @@ Generates standard REST endpoints (GET list, GET by id, POST, PUT, DELETE)
 for any SQLAlchemy model with Pydantic schemas, minimizing boilerplate.
 """
 
-from typing import Any, Callable, List, Optional, Tuple, Type
+from typing import Any, Callable, List, Type
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from api.dependencies import get_session

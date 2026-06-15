@@ -5,15 +5,13 @@ Uses a dynamic CRUD factory for standard entity endpoints
 and explicit routes for login, health, and transfer operations.
 """
 
-from decimal import Decimal
 from datetime import timedelta
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 
 from api.crud_factory import create_crud_router
-from api.dependencies import get_session, get_transferencia_service
+from api.dependencies import get_transferencia_service
 from api.schemas import (
     ClienteCreate, ClienteOut,
     CuentaCreate, CuentaOut,

@@ -10,16 +10,14 @@ Transport mode is selected via the MCP_TRANSPORT environment variable.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Sequence
 
-from mcp.server import Server, NotificationOptions
+from mcp.server import Server
 from mcp.server.models import InitializationOptions
 from mcp.types import (
     Tool,
     TextContent,
-    InitializeResult,
     ServerCapabilities,
-    ToolListChangedNotification,
 )
 
 from mcp_server.generator import generate_tools, handle_tool_call

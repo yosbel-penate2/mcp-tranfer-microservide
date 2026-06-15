@@ -5,7 +5,6 @@ following the hexagonal architecture pattern (ports & adapters).
 """
 
 from abc import ABC, abstractmethod
-from decimal import Decimal
 from typing import Optional, List
 
 from core.models import Cliente, Cuenta, Transaccion

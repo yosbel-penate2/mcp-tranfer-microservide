@@ -7,7 +7,6 @@ and the transfer operation request/response.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, List
 
 from pydantic import BaseModel, EmailStr, Field
 

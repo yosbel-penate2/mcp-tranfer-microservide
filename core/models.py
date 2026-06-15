@@ -7,8 +7,8 @@ Cliente (client), Cuenta (account), and Transaccion (transaction).
 from decimal import Decimal
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Numeric, DateTime, ForeignKey,
-    UniqueConstraint, func, create_engine
+    String, Numeric, DateTime, ForeignKey,
+    func
 )
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
