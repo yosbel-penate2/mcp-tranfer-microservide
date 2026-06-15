@@ -1,3 +1,12 @@
+"""Unit tests for TransferenciaService (domain transfer logic).
+
+Tests cover:
+  - Successful transfers (balance update, commit, transaction logging)
+  - Insufficient balance errors
+  - Non-existent account errors
+  - Cuenta.puede_retirar() boundary conditions
+"""
+
 from decimal import Decimal
 
 import pytest
@@ -7,6 +16,8 @@ from core.models import Cuenta, Cliente
 
 
 class TestTransferenciaExitosa:
+    """Scenario: a valid transfer between two existing accounts."""
+
     def test_transfiere_saldo_correctamente(self, service, mock_uow):
         cliente = Cliente(nombre="Alice", email="alice@test.com")
         mock_uow.clientes.agregar(cliente)
@@ -50,6 +61,8 @@ class TestTransferenciaExitosa:
 
 
 class TestSaldoInsuficiente:
+    """Scenario: source account has insufficient funds."""
+
     def test_lanza_error_si_saldo_insuficiente(self, service, mock_uow):
         cliente = Cliente(nombre="Dave", email="dave@test.com")
         mock_uow.clientes.agregar(cliente)
@@ -67,6 +80,8 @@ class TestSaldoInsuficiente:
 
 
 class TestCuentaNoEncontrada:
+    """Scenario: one or both accounts do not exist."""
+
     def test_lanza_error_si_origen_no_existe(self, service, mock_uow):
         with pytest.raises(CuentaNoEncontrada) as exc:
             service.transferir("999", "001", Decimal("100.00"))
@@ -86,6 +101,8 @@ class TestCuentaNoEncontrada:
 
 
 class TestPuedeRetirar:
+    """Scenario: Cuenta.puede_retirar() boundary conditions."""
+
     def test_puede_retirar_cuando_saldo_suficiente(self):
         cuenta = Cuenta(numero="010", saldo=Decimal("500.00"), cliente_id=1)
         assert cuenta.puede_retirar(Decimal("300.00")) is True

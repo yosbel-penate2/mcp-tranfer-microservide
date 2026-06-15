@@ -1,3 +1,9 @@
+"""Test fixtures and mock implementations for unit tests.
+
+Provides in-memory mock repositories and a mock Unit of Work
+to test the TransferenciaService in isolation without a database.
+"""
+
 from decimal import Decimal
 from unittest.mock import MagicMock
 from typing import Optional, List
@@ -12,6 +18,8 @@ from core.unit_of_work import UnitOfWork
 
 
 class MockClienteRepository(ClienteRepository):
+    """In-memory mock for ClienteRepository — uses a dict keyed by id."""
+
     def __init__(self):
         self.clientes: dict[int, Cliente] = {}
         self._next_id = 1
@@ -33,6 +41,8 @@ class MockClienteRepository(ClienteRepository):
 
 
 class MockCuentaRepository(CuentaRepository):
+    """In-memory mock for CuentaRepository — uses a dict keyed by account number."""
+
     def __init__(self):
         self.cuentas: dict[str, Cuenta] = {}
         self._next_id = 1
@@ -51,6 +61,8 @@ class MockCuentaRepository(CuentaRepository):
 
 
 class MockTransaccionRepository(TransaccionRepository):
+    """In-memory mock for TransaccionRepository — stores in a list."""
+
     def __init__(self):
         self.transacciones: list[Transaccion] = []
         self._next_id = 1
@@ -70,6 +82,13 @@ class MockTransaccionRepository(TransaccionRepository):
 
 
 class MockUnitOfWork(UnitOfWork):
+    """Mock Unit of Work that tracks commit/rollback calls.
+
+    Attributes:
+        committed: Set to True after commit() is called.
+        rollbacked: Set to True after rollback() is called.
+    """
+
     def __init__(self):
         self.clientes = MockClienteRepository()
         self.cuentas = MockCuentaRepository()
@@ -86,14 +105,17 @@ class MockUnitOfWork(UnitOfWork):
 
 @pytest.fixture
 def mock_uow():
+    """Fixture: returns a fresh MockUnitOfWork."""
     return MockUnitOfWork()
 
 
 @pytest.fixture
 def service(mock_uow):
+    """Fixture: returns a TransferenciaService wired to a MockUnitOfWork."""
     return TransferenciaService(uow=mock_uow)
 
 
 @pytest.fixture
 def sample_cliente():
+    """Fixture: returns a transient Cliente instance."""
     return Cliente(nombre="Juan Pérez", email="juan@example.com")

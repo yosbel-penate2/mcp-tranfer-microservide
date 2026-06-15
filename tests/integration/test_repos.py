@@ -1,3 +1,9 @@
+"""Integration tests for SQLAlchemy repository implementations.
+
+Tests each repository method against a real SQLite in-memory database,
+including constraint validation (unique email, unique account number).
+"""
+
 from decimal import Decimal
 
 import pytest
@@ -7,6 +13,8 @@ from core.models import Cliente, Cuenta, Transaccion
 
 
 class TestClienteRepository:
+    """Integration tests for SQLAlchemyClienteRepository."""
+
     def test_agregar_y_obtener_por_id(self, cliente_repo):
         cliente = Cliente(nombre="Alice", email="alice@test.com")
         saved = cliente_repo.agregar(cliente)
@@ -35,6 +43,8 @@ class TestClienteRepository:
 
 
 class TestCuentaRepository:
+    """Integration tests for SQLAlchemyCuentaRepository."""
+
     def test_agregar_y_obtener_por_numero(self, cuenta_repo, sample_cliente):
         cuenta = Cuenta(numero="X001", saldo=Decimal("100.00"), cliente_id=sample_cliente.id)
         cuenta_repo.agregar(cuenta)
@@ -59,6 +69,8 @@ class TestCuentaRepository:
 
 
 class TestTransaccionRepository:
+    """Integration tests for SQLAlchemyTransaccionRepository."""
+
     def test_registrar_y_historial(self, transaccion_repo, sample_cuentas):
         origen, destino = sample_cuentas
         txn = Transaccion(
