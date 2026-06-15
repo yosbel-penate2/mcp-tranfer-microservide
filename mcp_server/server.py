@@ -1,0 +1,102 @@
+import logging
+import os
+from typing import Any, Dict, List, Optional, Sequence
+
+from mcp.server import Server, NotificationOptions
+from mcp.server.models import InitializationOptions
+from mcp.types import (
+    Tool,
+    TextContent,
+    InitializeResult,
+    ServerCapabilities,
+    ToolListChangedNotification,
+)
+
+from mcp_server.generator import generate_tools, handle_tool_call
+
+logger = logging.getLogger(__name__)
+
+app = Server("banking-mcp")
+
+TRANSPORT = os.environ.get("MCP_TRANSPORT", "sse").lower()
+
+
+@app.list_tools()
+async def list_tools() -> List[Tool]:
+    return await generate_tools()
+
+
+@app.call_tool()
+async def call_tool(
+    name: str,
+    arguments: Dict[str, Any],
+) -> Sequence[TextContent]:
+    result = await handle_tool_call(name, arguments)
+    return [TextContent(type="text", text=r["text"]) for r in result]
+
+
+async def run_sse():
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+    import uvicorn
+
+    sse = SseServerTransport("/messages/")
+
+    async def handle_sse(request):
+        async with sse.connect_sse(
+            request.scope, request.receive, request._send
+        ) as (read_stream, write_stream):
+            await app.run(
+                read_stream,
+                write_stream,
+                InitializationOptions(
+                    server_name="banking-mcp",
+                    server_version="1.0.0",
+                    capabilities=ServerCapabilities(),
+                ),
+            )
+
+    async def handle_messages(request):
+        await sse.handle_post_message(request.scope, request.receive, request._send)
+
+    starlette_app = Starlette(
+        routes=[
+            Route("/sse", endpoint=handle_sse),
+            Route("/messages/", endpoint=handle_messages, methods=["POST"]),
+        ],
+    )
+
+    port = int(os.environ.get("MCP_PORT", "3000"))
+    logger.info(f"MCP SSE server starting on port {port}")
+    config = uvicorn.Config(starlette_app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+async def run_stdio():
+    from mcp.server.stdio import stdio_server
+
+    async with stdio_server() as (read_stream, write_stream):
+        await app.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="banking-mcp",
+                server_version="1.0.0",
+                capabilities=ServerCapabilities(),
+            ),
+        )
+
+
+async def main():
+    if TRANSPORT == "sse":
+        await run_sse()
+    else:
+        await run_stdio()
+
+
+if __name__ == "__main__":
+    import asyncio
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(main())
