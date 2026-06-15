@@ -1,3 +1,10 @@
+"""FastAPI application entry point.
+
+Defines the REST API routes, middleware, and dependency wiring.
+Uses a dynamic CRUD factory for standard entity endpoints
+and explicit routes for login, health, and transfer operations.
+"""
+
 from decimal import Decimal
 from datetime import timedelta
 
@@ -34,6 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# In-memory user store (replace with real DB in production)
 FAKE_USER_DB = {
     "admin": hash_password("admin123"),
 }
@@ -41,6 +49,11 @@ FAKE_USER_DB = {
 
 @app.post("/login", response_model=Token)
 def login(data: LoginRequest):
+    """Authenticate and return a JWT access token.
+
+    Validates username/password against the in-memory store.
+    On success returns a Bearer token valid for 60 minutes.
+    """
     hashed = FAKE_USER_DB.get(data.username)
     if not hashed or not verify_password(data.password, hashed):
         raise HTTPException(
@@ -56,6 +69,7 @@ def login(data: LoginRequest):
 
 @app.get("/health")
 def health():
+    """Health check endpoint — returns {"status": "ok"}."""
     return {"status": "ok"}
 
 
@@ -96,6 +110,11 @@ def transferir(
     service: TransferenciaService = Depends(get_transferencia_service),
     _: str = Depends(get_current_user),
 ):
+    """Execute a money transfer between two accounts.
+
+    Requires authentication. Delegates to TransferenciaService
+    for domain logic and validation.
+    """
     result = service.transferir(
         num_origen=data.num_origen,
         num_destino=data.num_destino,
