@@ -68,7 +68,7 @@ def _extract_input_schema(
     return {
         "type": "object",
         "properties": properties,
-        "required": required if required else None,
+        "required": required if required else [],
     }
 
 

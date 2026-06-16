@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-06-16
+
+### Fixed
+- `_extract_input_schema` now returns `required: []` instead of `required: null` when no parameters are required, fixing JSON Schema validation error that caused "None is not of type 'array'" in MCP tool calls.
+
+### Added
+- Voice assistant script (`scripts/voice_mcp.py`) with speech recognition and text-to-speech for hands-free banking operations.
+- LiveKit voice agent (`banking-voice-agent/`) for production-grade voice AI with SSE MCP transport.
+
 ## [1.0.0] - 2026-06-15
 
 ### Added
