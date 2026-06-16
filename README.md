@@ -211,6 +211,45 @@ GET  http://localhost:3000/sse       → Conexión SSE
 POST http://localhost:3000/messages/ → Mensajes del cliente
 ```
 
+## Asistente Bancario por Voz
+
+El proyecto incluye un agente de voz que se conecta al MCP Server y permite operaciones bancarias mediante comandos de voz.
+
+### Opción 1: Script Ligero (STT + TTS local)
+
+Usa Google Speech-to-Text (gratuito) y pyttsx3 (TTS offline).
+
+```bash
+# Instalar dependencias adicionales
+pip install speechrecognition pyttsx3 mcp httpx requests
+
+# Ejecutar
+python scripts/voice_mcp.py
+```
+
+Comandos de voz soportados:
+- **"listar clientes"** → consulta la lista de clientes
+- **"listar cuentas"** / **"saldos"** / **"cuanto tengo"** → consulta cuentas y saldos
+- **"transferir X a Y"** → (deshabilitado por seguridad en voz, usa la API web)
+- **"salir"** / **"adios"** → termina la sesión
+
+### Opción 2: LiveKit Voice Agent (producción)
+
+El directorio `banking-voice-agent/` contiene un agente LiveKit listo para desplegar en LiveKit Cloud.
+
+```bash
+cd banking-voice-agent
+cp .env.example .env.local
+# Completar LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET
+uv sync
+uv run python src/agent.py dev
+```
+
+Requiere:
+- Cuenta en [LiveKit Cloud](https://cloud.livekit.io/)
+- API Key de LiveKit
+- El MCP Server corriendo en modo SSE (`docker-compose up -d` expone SSE en puerto 3000)
+
 ## Datos de Demo (Seed)
 
 El script `scripts/seed.py` popula la base de datos con datos ficticios para desarrollo y demos.

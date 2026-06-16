@@ -1,0 +1,7 @@
+[project]
+  subdomain = "truckway-o57fc7w3"
+
+[agent]
+  id = "CA_osjGt7PxMTdH"
+  name = "banking-voice-agent"
+  entrypoint = "src/agent.py:entrypoint"
