@@ -87,27 +87,6 @@ def humanize_error(tool: str, error_msg: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Debug helpers
-# ---------------------------------------------------------------------------
-_DEBUG = True
-
-def debug(msg, *args):
-    if _DEBUG:
-        print(f"[TTS-DEBUG] {msg % args if args else msg}")
-
-def _queue_len(engine):
-    try:
-        return len(engine.proxy._queue)
-    except Exception:
-        return -1
-
-def _is_speaking(engine):
-    try:
-        return engine.proxy._driver._speaking
-    except Exception:
-        return -2
-
-# ---------------------------------------------------------------------------
 # TTS helpers — each call gets a *fresh* pyttsx3 engine (bypassing the
 # module-level _activeEngines cache) so every say+runAndWait cycle starts
 # with _busy=True in the proxy.  This avoids the race where endLoop
@@ -160,47 +139,33 @@ def speak_with_bargein(
     """
     print(f"[BOT] {text}")
 
-    debug("ENTER speak_with_bargein")
-
     with _tts_lock:
         engine = _fresh_engine()
         engine.say(text)
-        debug("say() done, queue=%s", _queue_len(engine))
 
         interrupted = False
         audio = None
 
         engine.startLoop(False)
-        debug("startLoop(False) done, _inLoop=%s, _driverLoop=%s",
-              engine._inLoop, engine._driverLoop)
 
         try:
-            loop_count = 0
             while engine.isBusy():
-                loop_count += 1
                 engine.iterate()
-                debug("iterate #%d done, isBusy=%s, _speaking=%s",
-                      loop_count, engine.isBusy(), _is_speaking(engine))
 
                 try:
-                    debug("  energy_threshold=%.1f", recognizer.energy_threshold)
                     audio = recognizer.listen(
                         source, timeout=0.3, phrase_time_limit=2
                     )
-                    debug("USER SPOKE — calling engine.stop()")
                     engine.stop()
                     interrupted = True
                     break
                 except sr.WaitTimeoutError:
                     continue
-                except Exception as exc:
-                    debug("listen() exception: %r", exc)
+                except Exception:
                     break
         finally:
             engine.endLoop()
-            debug("endLoop done, total_iterations=%d", loop_count)
 
-    debug("EXIT speak_with_bargein, interrupted=%s", interrupted)
     return interrupted, audio
 
 
@@ -295,7 +260,6 @@ async def main():
             # Open microphone once and reuse it
             with sr.Microphone() as source:
                 recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                print(f"[DEBUG] Initial energy_threshold={recognizer.energy_threshold:.1f}")
                 recognizer.dynamic_energy_threshold = False
 
                 speak(
@@ -311,6 +275,14 @@ async def main():
                     if bargein_audio is not None:
                         text = transcribe(bargein_audio, recognizer)
                         bargein_audio = None
+                        # If the user interrupted with exit keywords ("stop"),
+                        # they were just trying to shut the assistant up.
+                        # Ignore it and listen for the real command.
+                        if text and any(
+                            w in text for w in ["quit", "exit", "bye", "goodbye", "stop"]
+                        ):
+                            print("[DEBUG] Barge-in exit keyword ignored, re-listening")
+                            text = None
                     else:
                         text = listen(recognizer, source)
 
