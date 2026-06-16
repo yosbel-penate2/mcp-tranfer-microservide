@@ -87,22 +87,31 @@ def humanize_error(tool: str, error_msg: str) -> str:
     return f"Sorry, I ran into an issue while checking {tool}. Please try again."
 
 
-def speak_text(text: str):
-    """Non-blocking TTS: starts speaking in a background thread."""
-    engine = pyttsx3.init()
-    engine.setProperty("rate", 150)
-    engine.setProperty("volume", 0.9)
-    engine.say(text)
-    engine.runAndWait()
-    engine.stop()
+# ---------------------------------------------------------------------------
+# Singleton TTS engine — pyttsx3 shares a global driver across instances, so
+# creating multiple engines (or using them across threads) causes
+# "run loop already started".  We use one engine for the whole session.
+# ---------------------------------------------------------------------------
+_tts_engine: pyttsx3.Engine | None = None
+_tts_lock = threading.Lock()
+
+
+def _get_engine() -> pyttsx3.Engine:
+    global _tts_engine
+    if _tts_engine is None:
+        _tts_engine = pyttsx3.init()
+        _tts_engine.setProperty("rate", 150)
+        _tts_engine.setProperty("volume", 0.9)
+    return _tts_engine
 
 
 def speak(text: str):
-    """Print and speak text in one shot (blocking)."""
+    """Print and speak text (blocking)."""
     print(f"[BOT] {text}")
-    thread = threading.Thread(target=speak_text, args=(text,), daemon=True)
-    thread.start()
-    thread.join()
+    with _tts_lock:
+        engine = _get_engine()
+        engine.say(text)
+        engine.runAndWait()
 
 
 def speak_with_bargein(
@@ -123,37 +132,49 @@ def speak_with_bargein(
     """
     print(f"[BOT] {text}")
 
-    engine = pyttsx3.init()
-    engine.setProperty("rate", 150)
-    engine.setProperty("volume", 0.9)
-    engine.say(text)
+    with _tts_lock:
+        engine = _get_engine()
+        engine.say(text)
 
-    interrupted = False
-    audio = None
+        done = False
+        interrupted = False
+        audio = None
 
-    # Start TTS in a background thread
-    tts_thread = threading.Thread(target=engine.runAndWait, daemon=True)
-    tts_thread.start()
+        def _tts_worker():
+            nonlocal done
+            try:
+                engine.runAndWait()
+            except RuntimeError:
+                # Expected when engine.stop() interrupts runAndWait
+                pass
+            except Exception as e:
+                print(f"[TTS WORKER] {e}")
+            finally:
+                done = True
 
-    # Monitor microphone while TTS plays
-    while tts_thread.is_alive():
-        try:
-            # Short listen — if user speaks, catch it immediately
-            audio = recognizer.listen(source, timeout=0.15, phrase_time_limit=0.5)
-            # Audio received → user interrupted
-            engine.stop()
-            interrupted = True
-            break
-        except sr.WaitTimeoutError:
-            continue
-        except Exception:
-            break
+        t = threading.Thread(target=_tts_worker, daemon=True)
+        t.start()
 
-    # Ensure TTS thread finishes
-    try:
-        engine.stop()
-    except Exception:
-        pass
+        while not done:
+            try:
+                audio = recognizer.listen(
+                    source, timeout=0.15, phrase_time_limit=0.5
+                )
+                engine.stop()
+                interrupted = True
+                break
+            except sr.WaitTimeoutError:
+                continue
+            except Exception:
+                break
+
+        # Ensure the worker loop has actually exited
+        if not done:
+            try:
+                engine.stop()
+            except Exception:
+                pass
+            t.join(timeout=2)
 
     return interrupted, audio
 
