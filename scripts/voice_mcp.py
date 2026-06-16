@@ -126,8 +126,11 @@ def speak_with_bargein(
     """
     Speak text while listening for user interruption.
 
-    If the user starts speaking while TTS is playing, the TTS is
-    stopped immediately and the captured audio is returned.
+    Everything runs in the calling thread — no background thread, so
+    no COM cross-apartment marshaling issues with SpVoice.
+
+    Uses startLoop(False) + manual iterate() so we can interleave TTS
+    event pumping with microphone monitoring.
 
     Returns:
         (interrupted, audio_data):
@@ -140,43 +143,31 @@ def speak_with_bargein(
         engine = _fresh_engine()
         engine.say(text)
 
-        done = False
         interrupted = False
         audio = None
 
-        def _tts_worker():
-            nonlocal done
-            try:
-                engine.runAndWait()
-            except RuntimeError:
-                pass
-            except Exception as e:
-                print(f"[TTS WORKER] {e}")
-            finally:
-                done = True
+        # Enter external-event-loop mode (no driver message pump thread)
+        engine.startLoop(False)
 
-        t = threading.Thread(target=_tts_worker, daemon=True)
-        t.start()
+        try:
+            while engine.isBusy():
+                # Pump TTS events (COM messages, SAPI callbacks)
+                engine.iterate()
 
-        while not done:
-            try:
-                audio = recognizer.listen(
-                    source, timeout=0.15, phrase_time_limit=2
-                )
-                engine.stop()
-                interrupted = True
-                break
-            except sr.WaitTimeoutError:
-                continue
-            except Exception:
-                break
-
-        if not done:
-            try:
-                engine.stop()
-            except Exception:
-                pass
-            t.join(timeout=2)
+                # Quick peek at the microphone
+                try:
+                    audio = recognizer.listen(
+                        source, timeout=0.08, phrase_time_limit=2
+                    )
+                    engine.stop()
+                    interrupted = True
+                    break
+                except sr.WaitTimeoutError:
+                    continue
+                except Exception:
+                    break
+        finally:
+            engine.endLoop()
 
     return interrupted, audio
 
@@ -197,16 +188,6 @@ def transcribe(
 
 
 def listen(recognizer: sr.Recognizer, source: sr.AudioSource) -> str | None:
-    """Listen and transcribe one utterance from the microphone."""
-    print("[MIC] Listening...")
-    try:
-        audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
-    except sr.WaitTimeoutError:
-        return None
-    return transcribe(audio, recognizer)
-
-
-def listen(recognizer: sr.Recognizer, source: sr.AudioSource) -> str | None:
     """
     Listen and transcribe one utterance from the microphone.
 
@@ -217,16 +198,7 @@ def listen(recognizer: sr.Recognizer, source: sr.AudioSource) -> str | None:
         audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
     except sr.WaitTimeoutError:
         return None
-
-    try:
-        text = recognizer.recognize_google(audio, language="en-US")
-        print(f"[YOU] {text}")
-        return text.lower().strip()
-    except sr.UnknownValueError:
-        return None
-    except sr.RequestError as e:
-        print(f"[STT ERROR] {e}")
-        return None
+    return transcribe(audio, recognizer)
 
 
 def parse_intent(text: str):
