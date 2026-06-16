@@ -87,28 +87,33 @@ def humanize_error(tool: str, error_msg: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Singleton TTS engine — pyttsx3 uses a global driver internally, so
-# creating multiple instances causes "run loop already started" errors.
-# We use one engine for the whole session behind a mutex.
+# TTS helpers — each call gets a *fresh* pyttsx3 engine (bypassing the
+# module-level _activeEngines cache) so every say+runAndWait cycle starts
+# with _busy=True in the proxy.  This avoids the race where endLoop
+# (pushed inside runAndWait) gets processed on the very first pump and
+# purges the utterance before it can be spoken.
+#
+# A threading lock serialises all TTS access — only one engine exists at
+# a time — so there is never a "run loop already started" conflict.
 # ---------------------------------------------------------------------------
-_tts_engine: pyttsx3.Engine | None = None
 _tts_lock = threading.Lock()
 
 
-def _get_engine() -> pyttsx3.Engine:
-    global _tts_engine
-    if _tts_engine is None:
-        _tts_engine = pyttsx3.init()
-        _tts_engine.setProperty("rate", 150)
-        _tts_engine.setProperty("volume", 0.9)
-    return _tts_engine
+def _fresh_engine() -> pyttsx3.Engine:
+    """Return a completely new Engine (not from the pyttsx3 cache)."""
+    from pyttsx3.engine import Engine  # noqa: PLC0415
+
+    eng = Engine()
+    eng.setProperty("rate", 150)
+    eng.setProperty("volume", 0.9)
+    return eng
 
 
 def speak(text: str):
     """Print and speak text (blocking)."""
     print(f"[BOT] {text}")
     with _tts_lock:
-        engine = _get_engine()
+        engine = _fresh_engine()
         engine.say(text)
         engine.runAndWait()
 
@@ -132,7 +137,7 @@ def speak_with_bargein(
     print(f"[BOT] {text}")
 
     with _tts_lock:
-        engine = _get_engine()
+        engine = _fresh_engine()
         engine.say(text)
 
         done = False
