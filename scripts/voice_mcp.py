@@ -1,9 +1,12 @@
 #!/usr/bin/env python
-"""Voice + MCP Banking Assistant - Minimal script.
+"""Voice + MCP Banking Assistant.
 
 Uses: Google STT (free), pyttsx3 TTS (local), MCP stdio.
+All messages and responses are in English.
 """
+
 import asyncio
+import json
 import sys
 import os
 
@@ -17,11 +20,12 @@ from mcp import ClientSession, StdioServerParameters
 
 
 def speak(text):
+    """Convert text to speech and print it."""
     print(f"[BOT] {text}")
     try:
         engine = pyttsx3.init()
-        engine.setProperty('rate', 150)
-        engine.setProperty('volume', 0.9)
+        engine.setProperty("rate", 150)
+        engine.setProperty("volume", 0.9)
         engine.say(text)
         engine.runAndWait()
         engine.stop()
@@ -29,16 +33,75 @@ def speak(text):
         print(f"[TTS ERROR] {e}")
 
 
+def humanize_clients(raw: str) -> str:
+    """Convert raw JSON list of clients into a conversational sentence."""
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list) and len(data) > 0:
+            names = [c.get("nombre", "unknown") for c in data]
+            if len(names) == 1:
+                return f"We have one client: {names[0]}."
+            return f"We have {len(names)} clients: {', '.join(names[:-1])} and {names[-1]}."
+        return "No clients found in the system."
+    except (json.JSONDecodeError, TypeError):
+        return raw[:300]
+
+
+def humanize_accounts(raw: str) -> str:
+    """Convert raw JSON list of accounts into a conversational sentence."""
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list) and len(data) > 0:
+            parts = []
+            total = 0
+            for a in data:
+                numero = a.get("numero", "unknown")
+                saldo = float(a.get("saldo", 0))
+                total += saldo
+                parts.append(f"account {numero} has ${saldo:,.2f}")
+            summary = "; ".join(parts)
+            return f"There are {len(data)} accounts. {summary}. Your total balance across all accounts is ${total:,.2f}."
+        return "No accounts found."
+    except (json.JSONDecodeError, TypeError):
+        return raw[:300]
+
+
+def humanize_health(raw: str) -> str:
+    """Convert health check JSON into a friendly message."""
+    try:
+        data = json.loads(raw)
+        status = data.get("status", "unknown")
+        if status == "ok":
+            return "The system is running perfectly. All services are operational."
+        return f"The system status is: {status}."
+    except (json.JSONDecodeError, TypeError):
+        return raw[:200]
+
+
+def humanize_error(tool: str, error_msg: str) -> str:
+    """Convert a technical error into a friendly message."""
+    error_lower = str(error_msg).lower()
+    if "connection" in error_lower or "unreachable" in error_lower:
+        return "I'm having trouble connecting to the banking system. Please check that the server is running."
+    if "not found" in error_lower:
+        return f"I couldn't find what you were looking for in the {tool} section."
+    if "timeout" in error_lower:
+        return "The request timed out. The system might be busy, please try again."
+    return f"Sorry, I ran into an issue while checking {tool}. Please try again."
+
+
 async def main():
     recognizer = sr.Recognizer()
     recognizer.energy_threshold = 300
     recognizer.dynamic_energy_threshold = True
 
-    # MCP Server via stdio - use valid JWT token from API login
-    import requests
-    login_resp = requests.post("http://localhost:8000/login", json={"username": "admin", "password": "admin123"})
-    token = login_resp.json().get("access_token", "supersecrettoken")
-    
+    # Obtain JWT token from the Banking API
+    login_resp = requests.post(
+        "http://localhost:8000/login",
+        json={"username": "admin", "password": "admin123"},
+    )
+    token = login_resp.json().get("access_token", "")
+
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     server_params = StdioServerParameters(
         command="python",
@@ -49,107 +112,140 @@ async def main():
             "MCP_TRANSPORT": "stdio",
             "API_BASE_URL": "http://localhost:8000",
             "AUTH_TOKEN": token,
-        }
+        },
     )
 
-    print("[BANK] Asistente bancario por voz iniciado")
-    print("Di 'salir' para terminar\n")
+    print("[BANK] Voice Banking Assistant started")
+    print("Say 'quit' to exit\n")
 
     async with stdio_client(server_params) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
 
-            # List available tools
             tools = await session.list_tools()
-            print(f"Tools disponibles: {[t.name for t in tools.tools]}")
-            print("Escuchando...")
+            print(f"Available tools: {[t.name for t in tools.tools]}")
+            print("Listening...\n")
 
             def listen():
                 with sr.Microphone() as source:
-                    print("[MIC] Escuchando...")
+                    print("[MIC] Listening...")
                     recognizer.adjust_for_ambient_noise(source, duration=0.5)
                     try:
-                        audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
+                        audio = recognizer.listen(
+                            source, timeout=5, phrase_time_limit=10
+                        )
                     except sr.WaitTimeoutError:
                         return None
                 try:
-                    text = recognizer.recognize_google(audio, language="es-ES")
+                    text = recognizer.recognize_google(audio, language="en-US")
                     print(f"[YOU] {text}")
-                    return text.lower()
+                    return text.lower().strip()
                 except sr.UnknownValueError:
                     return None
                 except sr.RequestError as e:
-                    print(f"Error STT: {e}")
+                    print(f"[STT ERROR] {e}")
                     return None
 
             def parse_intent(text):
-                """Simple intent parsing for banking operations."""
+                """Parse English voice commands into actions."""
                 if not text:
                     return None, {}
 
-                if any(w in text for w in ["salir", "adios", "terminar", "chau"]):
+                if any(w in text for w in ["quit", "exit", "bye", "goodbye", "stop"]):
                     return "exit", {}
 
-                if "saldo" in text or "cuanto tengo" in text:
-                    return "list_cuentas", {}
+                if any(w in text for w in ["balance", "account", "money", "how much"]):
+                    return "list_accounts", {}
 
-                if "transferir" in text or "enviar" in text:
-                    return "transferir", {"text": text}
+                if any(w in text for w in ["transfer", "send", "pay"]):
+                    return "transfer", {"text": text}
 
-                if "cliente" in text and ("lista" in text or "todos" in text):
-                    return "list_clientes", {}
+                if any(w in text for w in ["client", "customer", "who"]):
+                    return "list_clients", {}
+
+                if any(w in text for w in ["health", "status", "running"]):
+                    return "health", {}
 
                 return "unknown", {"text": text}
 
-            speak("Hola, soy tu asistente bancario. En que puedo ayudarte?")
+            speak(
+                "Hello, I'm your banking assistant. "
+                "I can check balances, list clients, or tell you the system status. "
+                "How can I help you?"
+            )
 
             while True:
                 text = listen()
                 if not text:
-                    speak("No te entendi. Puedes repetir?")
+                    speak("Sorry, I didn't catch that. Could you repeat?")
                     continue
 
                 print(f"[DEBUG] Intent: {text}")
-
                 intent, params = parse_intent(text)
 
                 if intent == "exit":
-                    speak("Hasta luego!")
+                    speak("Goodbye! Have a great day.")
                     break
 
-                elif intent == "list_cuentas":
+                elif intent == "list_accounts":
                     try:
-                        print("[DEBUG] Calling list_cuentas...")
-                        result = await session.call_tool("list_all_cuentas__get", {})
-                        print(f"[DEBUG] Result: {result.content[0].text[:200]}")
-                        speak(result.content[0].text[:500])
+                        result = await session.call_tool(
+                            "list_all_cuentas__get", {}
+                        )
+                        raw = result.content[0].text
+                        print(f"[DEBUG] Result: {raw[:200]}")
+                        response = humanize_accounts(raw)
+                        speak(response)
                     except Exception as e:
-                        print(f"[ERROR] list_cuentas: {e}")
-                        speak(f"Error consultando cuentas: {e}")
+                        print(f"[ERROR] list_accounts: {e}")
+                        speak(humanize_error("accounts", e))
 
-                elif intent == "list_clientes":
+                elif intent == "list_clients":
                     try:
-                        print("[DEBUG] Calling list_clientes...")
-                        result = await session.call_tool("list_all_clientes__get", {})
-                        print(f"[DEBUG] Result: {result.content[0].text[:200]}")
-                        speak(result.content[0].text[:500])
+                        result = await session.call_tool(
+                            "list_all_clientes__get", {}
+                        )
+                        raw = result.content[0].text
+                        print(f"[DEBUG] Result: {raw[:200]}")
+                        response = humanize_clients(raw)
+                        speak(response)
                     except Exception as e:
-                        print(f"[ERROR] list_clientes: {e}")
-                        speak(f"Error consultando clientes: {e}")
+                        print(f"[ERROR] list_clients: {e}")
+                        speak(humanize_error("clients", e))
 
-                elif intent == "transferir":
-                    speak("Para transferencias, por favor usa la app web. Por seguridad no proceso transferencias por voz.")
+                elif intent == "health":
+                    try:
+                        result = await session.call_tool(
+                            "health_health_get", {}
+                        )
+                        raw = result.content[0].text
+                        print(f"[DEBUG] Result: {raw[:200]}")
+                        response = humanize_health(raw)
+                        speak(response)
+                    except Exception as e:
+                        print(f"[ERROR] health: {e}")
+                        speak(humanize_error("system status", e))
+
+                elif intent == "transfer":
+                    speak(
+                        "For security reasons, I cannot process transfers by voice. "
+                        "Please use the web application instead."
+                    )
 
                 else:
-                    speak("Puedo ayudarte con: consultar saldos, listar clientes, o transferencias. Que necesitas?")
+                    speak(
+                        "Sorry, I didn't understand. You can ask me about: "
+                        "account balances, client list, or system status."
+                    )
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nSaliendo...")
+        print("\nShutting down...")
     except Exception as e:
         print(f"Error: {e}")
         import traceback
+
         traceback.print_exc()
