@@ -227,11 +227,14 @@ pip install speechrecognition pyttsx3 mcp httpx requests
 python scripts/voice_mcp.py
 ```
 
-Comandos de voz soportados:
-- **"listar clientes"** → consulta la lista de clientes
-- **"listar cuentas"** / **"saldos"** / **"cuanto tengo"** → consulta cuentas y saldos
-- **"transferir X a Y"** → (deshabilitado por seguridad en voz, usa la API web)
-- **"salir"** / **"adios"** → termina la sesión
+Comandos de voz soportados (en inglés):
+- **"list clients"** / **"who are my clients"** → consulta la lista de clientes
+- **"my balance"** / **"how much money"** / **"accounts"** → consulta cuentas y saldos
+- **"system status"** / **"health"** → estado del sistema
+- **"transfer X to Y"** → (deshabilitado por seguridad en voz, usa la API web)
+- **"quit"** / **"exit"** / **"bye"** → termina la sesión
+
+**Barge-in**: puedes interrumpir al asistente en cualquier momento diciendo cualquier palabra (por ejemplo "stop"). El asistente se callará inmediatamente y escuchará tu siguiente comando. Si dices "stop" para interrumpir, no se cerrará la sesión — solo se detiene la voz y espera tu siguiente instrucción.
 
 ### Opción 2: LiveKit Voice Agent (producción)
 
