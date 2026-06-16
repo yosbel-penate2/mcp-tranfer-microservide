@@ -8,7 +8,6 @@ Supports barge-in: the user can interrupt the assistant at any time.
 import asyncio
 import json
 import threading
-import time
 import sys
 import os
 
@@ -88,9 +87,9 @@ def humanize_error(tool: str, error_msg: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Singleton TTS engine — pyttsx3 shares a global driver across instances, so
-# creating multiple engines (or using them across threads) causes
-# "run loop already started".  We use one engine for the whole session.
+# Singleton TTS engine — pyttsx3 uses a global driver internally, so
+# creating multiple instances causes "run loop already started" errors.
+# We use one engine for the whole session behind a mutex.
 # ---------------------------------------------------------------------------
 _tts_engine: pyttsx3.Engine | None = None
 _tts_lock = threading.Lock()
@@ -123,7 +122,7 @@ def speak_with_bargein(
     Speak text while listening for user interruption.
 
     If the user starts speaking while TTS is playing, the TTS is
-    stopped immediately and the audio is returned.
+    stopped immediately and the captured audio is returned.
 
     Returns:
         (interrupted, audio_data):
@@ -145,7 +144,6 @@ def speak_with_bargein(
             try:
                 engine.runAndWait()
             except RuntimeError:
-                # Expected when engine.stop() interrupts runAndWait
                 pass
             except Exception as e:
                 print(f"[TTS WORKER] {e}")
@@ -158,7 +156,7 @@ def speak_with_bargein(
         while not done:
             try:
                 audio = recognizer.listen(
-                    source, timeout=0.15, phrase_time_limit=0.5
+                    source, timeout=0.15, phrase_time_limit=2
                 )
                 engine.stop()
                 interrupted = True
@@ -168,7 +166,6 @@ def speak_with_bargein(
             except Exception:
                 break
 
-        # Ensure the worker loop has actually exited
         if not done:
             try:
                 engine.stop()
@@ -177,6 +174,31 @@ def speak_with_bargein(
             t.join(timeout=2)
 
     return interrupted, audio
+
+
+def transcribe(
+    audio: sr.AudioData, recognizer: sr.Recognizer
+) -> str | None:
+    """Transcribe audio to lowercase text, or None on failure."""
+    try:
+        text = recognizer.recognize_google(audio, language="en-US")
+        print(f"[YOU] {text}")
+        return text.lower().strip()
+    except sr.UnknownValueError:
+        return None
+    except sr.RequestError as e:
+        print(f"[STT ERROR] {e}")
+        return None
+
+
+def listen(recognizer: sr.Recognizer, source: sr.AudioSource) -> str | None:
+    """Listen and transcribe one utterance from the microphone."""
+    print("[MIC] Listening...")
+    try:
+        audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
+    except sr.WaitTimeoutError:
+        return None
+    return transcribe(audio, recognizer)
 
 
 def listen(recognizer: sr.Recognizer, source: sr.AudioSource) -> str | None:
@@ -272,8 +294,15 @@ async def main():
                     "How can I help you?"
                 )
 
+                bargein_audio: sr.AudioData | None = None
+
                 while True:
-                    text = listen(recognizer, source)
+                    if bargein_audio is not None:
+                        text = transcribe(bargein_audio, recognizer)
+                        bargein_audio = None
+                    else:
+                        text = listen(recognizer, source)
+
                     if not text:
                         speak("Sorry, I didn't catch that. Could you repeat?")
                         continue
@@ -293,11 +322,11 @@ async def main():
                             raw = result.content[0].text
                             print(f"[DEBUG] Result: {raw[:200]}")
                             response = humanize_accounts(raw)
-                            interrupted, _ = speak_with_bargein(
+                            interrupted, audio = speak_with_bargein(
                                 response, recognizer, source
                             )
                             if interrupted:
-                                # User already started speaking — process next
+                                bargein_audio = audio
                                 continue
                         except Exception as e:
                             print(f"[ERROR] list_accounts: {e}")
@@ -311,10 +340,11 @@ async def main():
                             raw = result.content[0].text
                             print(f"[DEBUG] Result: {raw[:200]}")
                             response = humanize_clients(raw)
-                            interrupted, _ = speak_with_bargein(
+                            interrupted, audio = speak_with_bargein(
                                 response, recognizer, source
                             )
                             if interrupted:
+                                bargein_audio = audio
                                 continue
                         except Exception as e:
                             print(f"[ERROR] list_clients: {e}")
@@ -328,10 +358,11 @@ async def main():
                             raw = result.content[0].text
                             print(f"[DEBUG] Result: {raw[:200]}")
                             response = humanize_health(raw)
-                            interrupted, _ = speak_with_bargein(
+                            interrupted, audio = speak_with_bargein(
                                 response, recognizer, source
                             )
                             if interrupted:
+                                bargein_audio = audio
                                 continue
                         except Exception as e:
                             print(f"[ERROR] health: {e}")
